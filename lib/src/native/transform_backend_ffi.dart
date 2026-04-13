@@ -16,6 +16,8 @@ bool? _nativeBackendAvailable;
 final Expando<Uint8List> _retainedNativeImageBytes = Expando<Uint8List>(
   'nativeImageBytes',
 );
+final Pointer<NativeFunction<Void Function(Pointer<Void>)>>
+_imageFreeBufferPointer = Native.addressOf(image_free_buffer);
 
 bool get nativeImageBackendAvailable {
   if (!_supportsNativePlatform) {
@@ -54,7 +56,7 @@ Image? tryNativeCopyResize(
   final sourceBytes = prepared.toUint8List();
   input.asTypedList(sourceBytes.length).setAll(0, sourceBytes);
   try {
-    final result = imageResizeRgba8(
+    final result = image_resize_rgba8(
       input,
       prepared.width,
       prepared.height,
@@ -107,7 +109,7 @@ Image? tryNativeCopyCrop(
   final sourceBytes = prepared.toUint8List();
   input.asTypedList(sourceBytes.length).setAll(0, sourceBytes);
   try {
-    final result = imageCropRgba8(
+    final result = image_crop_rgba8(
       input,
       prepared.width,
       prepared.height,
@@ -118,6 +120,47 @@ Image? tryNativeCopyCrop(
       clampedHeight,
     );
     return _materializeImageResult(result, original: src);
+  } finally {
+    malloc.free(input);
+  }
+}
+
+bool tryNativeGaussianBlur(
+  Image src, {
+  required int radius,
+}) {
+  if (!nativeImageBackendAvailable ||
+      radius <= 0 ||
+      src.hasPalette ||
+      src.hasAnimation) {
+    return false;
+  }
+
+  final prepared = _prepareImage(src);
+  if (prepared == null || !_canWriteBackToSource(src, prepared)) {
+    return false;
+  }
+
+  final input = malloc<Uint8>(prepared.length);
+  final sourceBytes = prepared.toUint8List();
+  input.asTypedList(sourceBytes.length).setAll(0, sourceBytes);
+  try {
+    final result = image_gaussian_blur_rgba8(
+      input,
+      prepared.width,
+      prepared.height,
+      prepared.numChannels,
+      radius,
+    );
+    final blurred = _materializeImageResult(result, original: src);
+    if (blurred == null ||
+        blurred.width != src.width ||
+        blurred.height != src.height ||
+        src.lengthInBytes != blurred.lengthInBytes) {
+      return false;
+    }
+    src.toUint8List().setAll(0, blurred.toUint8List());
+    return true;
   } finally {
     malloc.free(input);
   }
@@ -140,21 +183,21 @@ _PreparedImage? _prepareImage(Image src) {
 Image? _materializeImageResult(ImageResult result, {required Image original}) {
   if (result.code != _imageOk ||
       result.buffer.data == nullptr ||
-      result.buffer.releaseHandle == nullptr) {
+      result.buffer.release_handle == nullptr) {
     return null;
   }
 
   final length = result.buffer.stride * result.buffer.height;
   if (length <= 0) {
-    imageFreeBuffer(result.buffer.releaseHandle);
+    image_free_buffer(result.buffer.release_handle);
     return null;
   }
 
   if (original.format == Format.uint8 && original.numChannels == 4) {
     final bytes = result.buffer.data.asTypedList(
       length,
-      finalizer: imageFreeBufferPointer,
-      token: result.buffer.releaseHandle,
+      finalizer: _imageFreeBufferPointer,
+      token: result.buffer.release_handle,
     );
     final image = createNativeImageFromRgba(
       template: original,
@@ -180,16 +223,28 @@ Image? _materializeImageResult(ImageResult result, {required Image original}) {
       noAnimation: true,
     );
   } finally {
-    imageFreeBuffer(result.buffer.releaseHandle);
+    image_free_buffer(result.buffer.release_handle);
   }
 }
 
-bool get _supportsNativePlatform => Platform.isAndroid || Platform.isIOS;
+bool get _supportsNativePlatform =>
+    Platform.isAndroid ||
+    Platform.isIOS ||
+    Platform.isMacOS ||
+    Platform.isLinux ||
+    Platform.isWindows;
 
 bool _probeNativeBackend() {
-  imageLastErrorMessage();
+  image_last_error_message();
   return true;
 }
+
+bool _canWriteBackToSource(Image src, _PreparedImage prepared) =>
+    identical(src, prepared.image) &&
+    src.format == Format.uint8 &&
+    src.numChannels == 4 &&
+    !src.hasPalette &&
+    !src.hasAnimation;
 
 final class _PreparedImage {
   _PreparedImage(this.image);

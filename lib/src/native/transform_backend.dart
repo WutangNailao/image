@@ -61,6 +61,23 @@ Image? tryNativeCopyCrop(
   return image;
 }
 
+bool tryNativeGaussianBlur(
+  Image src, {
+  required int radius,
+}) {
+  if (_imageBackendMode == ImageBackendMode.dartOnly) {
+    return false;
+  }
+  final success = backend.tryNativeGaussianBlur(
+    src,
+    radius: radius,
+  );
+  if (!success && _imageBackendMode == ImageBackendMode.nativeOnly) {
+    throw UnsupportedError('Native backend could not execute gaussianBlur.');
+  }
+  return success;
+}
+
 Image createNativeImageFromRgba({
   required Image template,
   required Uint8List bytes,

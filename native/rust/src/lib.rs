@@ -118,6 +118,76 @@ fn interpolation_filter(interpolation: i32) -> Result<FilterType, String> {
     }
 }
 
+fn gaussian_kernel(radius: i32) -> Vec<f32> {
+    let sigma = radius as f32 * (2.0 / 3.0);
+    let s = 2.0 * sigma * sigma;
+    let mut kernel = Vec::with_capacity((radius * 2 + 1) as usize);
+    let mut sum = 0.0f32;
+
+    for x in -radius..=radius {
+        let coefficient = (-((x * x) as f32) / s).exp();
+        sum += coefficient;
+        kernel.push(coefficient);
+    }
+
+    if sum != 0.0 {
+        for coefficient in &mut kernel {
+            *coefficient /= sum;
+        }
+    }
+
+    kernel
+}
+
+fn reflect_index(max: i32, value: i32) -> i32 {
+    let reflected = if value < 0 {
+        -value
+    } else if value >= max {
+        max - (value - max) - 1
+    } else {
+        value
+    };
+    reflected.clamp(0, max.saturating_sub(1))
+}
+
+fn convolve_line(
+    src: &[u8],
+    dst: &mut [u8],
+    width: i32,
+    height: i32,
+    kernel: &[f32],
+    radius: i32,
+    horizontal: bool,
+) {
+    let line_count = if horizontal { height } else { width };
+    let line_width = if horizontal { width } else { height };
+
+    for y in 0..line_count {
+        for x in 0..line_width {
+            let mut accum = [0.0f32; 4];
+
+            for (offset, coefficient) in (-radius..=radius).zip(kernel.iter().copied()) {
+                let reflected = reflect_index(line_width, x + offset);
+                let (sample_x, sample_y) = if horizontal {
+                    (reflected, y)
+                } else {
+                    (y, reflected)
+                };
+                let sample_index = ((sample_y * width + sample_x) * 4) as usize;
+                for channel in 0..4 {
+                    accum[channel] += coefficient * src[sample_index + channel] as f32;
+                }
+            }
+
+            let (dest_x, dest_y) = if horizontal { (x, y) } else { (y, x) };
+            let dest_index = ((dest_y * width + dest_x) * 4) as usize;
+            for channel in 0..4 {
+                dst[dest_index + channel] = accum[channel].clamp(0.0, 255.0) as u8;
+            }
+        }
+    }
+}
+
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn image_resize_rgba8(
     data: *const u8,
@@ -186,6 +256,34 @@ pub unsafe extern "C" fn image_crop_rgba8(
 }
 
 #[unsafe(no_mangle)]
+pub unsafe extern "C" fn image_gaussian_blur_rgba8(
+    data: *const u8,
+    width: i32,
+    height: i32,
+    channels: i32,
+    radius: i32,
+) -> ImageResult {
+    if radius <= 0 {
+        return error("radius must be positive");
+    }
+
+    let src = match unsafe { input_rgba_image(data, width, height, channels) } {
+        Ok(image) => image,
+        Err(message) => return error(message),
+    };
+
+    let kernel = gaussian_kernel(radius);
+    let source = src.as_raw();
+    let mut tmp = vec![0u8; source.len()];
+    let mut out = vec![0u8; source.len()];
+
+    convolve_line(source, &mut tmp, width, height, &kernel, radius, true);
+    convolve_line(&tmp, &mut out, width, height, &kernel, radius, false);
+
+    success(out, width, height, 4)
+}
+
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn image_free_buffer(release_handle: *mut std::ffi::c_void) {
     if release_handle.is_null() {
         return;
@@ -240,5 +338,18 @@ mod tests {
         let result = unsafe { image_crop_rgba8(input.as_ptr(), 2, 2, 3, 0, 0, 1, 1) };
         assert_eq!(result.code, IMAGE_ERROR);
         assert!(result.buffer.data.is_null());
+    }
+
+    #[test]
+    fn gaussian_blur_returns_pixels() {
+        let input = sample_rgba(4, 4);
+        let result = unsafe { image_gaussian_blur_rgba8(input.as_ptr(), 4, 4, 4, 2) };
+        assert_eq!(result.code, IMAGE_OK);
+        assert_eq!(result.buffer.width, 4);
+        assert_eq!(result.buffer.height, 4);
+        assert!(!result.buffer.data.is_null());
+        unsafe {
+            image_free_buffer(result.buffer.release_handle);
+        }
     }
 }

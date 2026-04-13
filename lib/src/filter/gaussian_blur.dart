@@ -2,6 +2,7 @@ import 'dart:math';
 
 import '../color/channel.dart';
 import '../image/image.dart';
+import '../native/transform_backend.dart';
 import 'separable_convolution.dart';
 import 'separable_kernel.dart';
 
@@ -15,6 +16,10 @@ Image gaussianBlur(Image src,
     Image? mask,
     Channel maskChannel = Channel.luminance}) {
   if (radius <= 0) {
+    return src;
+  }
+
+  if (mask == null && tryNativeGaussianBlur(src, radius: radius)) {
     return src;
   }
 

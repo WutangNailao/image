@@ -38,6 +38,12 @@ ImageResult image_crop_rgba8(const uint8_t* data,
                              int32_t crop_width,
                              int32_t crop_height);
 
+ImageResult image_gaussian_blur_rgba8(const uint8_t* data,
+                                      int32_t width,
+                                      int32_t height,
+                                      int32_t channels,
+                                      int32_t radius);
+
 void image_free_buffer(void* release_handle);
 
 const char* image_last_error_message(void);

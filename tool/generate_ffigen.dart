@@ -19,9 +19,8 @@ void main() {
     ),
     output: Output(
       dartFile: Uri.file('lib/src/native/bindings.dart'),
-      style: const DynamicLibraryBindings(
-        wrapperName: 'image_native_bindings',
-        wrapperDocComment: 'Generate FFI bindings for the Rust image backend.',
+      style: const NativeExternalBindings(
+        assetId: 'package:image/src/native/bindings.dart',
       ),
     ),
   ).generate();

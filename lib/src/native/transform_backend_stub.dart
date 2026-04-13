@@ -19,3 +19,9 @@ Image? tryNativeCopyCrop(
   required int height,
 }) =>
     null;
+
+bool tryNativeGaussianBlur(
+  Image src, {
+  required int radius,
+}) =>
+    false;
