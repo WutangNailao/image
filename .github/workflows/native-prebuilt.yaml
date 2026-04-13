@@ -13,6 +13,11 @@ jobs:
         run: cargo install cargo-ndk
       - name: Build Android prebuilts
         run: ./tool/build_prebuilt_native.sh android
+      - name: Upload Android prebuilts
+        uses: actions/upload-artifact@v4
+        with:
+          name: native-prebuilt-android
+          path: native/prebuilt/android
 
   ios:
     runs-on: macos-latest
@@ -26,3 +31,75 @@ jobs:
           rustup target add x86_64-apple-ios
       - name: Build iOS prebuilts
         run: ./tool/build_prebuilt_native.sh ios
+      - name: Upload iOS prebuilts
+        uses: actions/upload-artifact@v4
+        with:
+          name: native-prebuilt-ios
+          path: native/prebuilt/ios
+
+  macos:
+    strategy:
+      fail-fast: false
+      matrix:
+        target:
+          - runner: macos-latest
+            rust_target: aarch64-apple-darwin
+            artifact_dir: native/prebuilt/macos/arm64
+    runs-on: ${{ matrix.target.runner }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target.rust_target }}
+      - name: Build macOS prebuilts
+        run: ./tool/build_prebuilt_native.sh macos
+      - name: Upload macOS prebuilts
+        uses: actions/upload-artifact@v4
+        with:
+          name: native-prebuilt-macos
+          path: ${{ matrix.target.artifact_dir }}
+
+  linux:
+    strategy:
+      fail-fast: false
+      matrix:
+        target:
+          - runner: ubuntu-latest
+            rust_target: x86_64-unknown-linux-gnu
+            artifact_dir: native/prebuilt/linux/x64
+    runs-on: ${{ matrix.target.runner }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target.rust_target }}
+      - name: Build Linux prebuilts
+        run: ./tool/build_prebuilt_native.sh linux
+      - name: Upload Linux prebuilts
+        uses: actions/upload-artifact@v4
+        with:
+          name: native-prebuilt-linux
+          path: ${{ matrix.target.artifact_dir }}
+
+  windows:
+    strategy:
+      fail-fast: false
+      matrix:
+        target:
+          - runner: windows-latest
+            rust_target: x86_64-pc-windows-msvc
+            artifact_dir: native/prebuilt/windows/x64
+    runs-on: ${{ matrix.target.runner }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target.rust_target }}
+      - name: Build Windows prebuilts
+        shell: bash
+        run: ./tool/build_prebuilt_native.sh windows
+      - name: Upload Windows prebuilts
+        uses: actions/upload-artifact@v4
+        with:
+          name: native-prebuilt-windows
+          path: ${{ matrix.target.artifact_dir }}

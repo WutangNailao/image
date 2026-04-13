@@ -5,7 +5,8 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 RUST_DIR="$ROOT_DIR/native/rust"
 PREBUILT_DIR="$ROOT_DIR/native/prebuilt"
-TARGET="${1:-all}"
+HOST_OS="$(uname -s)"
+HOST_ARCH="$(uname -m)"
 
 run_cargo() {
   (
@@ -13,6 +14,73 @@ run_cargo() {
     cargo "$@"
   )
 }
+
+current_desktop_os() {
+  case "$HOST_OS" in
+    Darwin) echo "macos" ;;
+    Linux) echo "linux" ;;
+    MINGW*|MSYS*|CYGWIN*) echo "windows" ;;
+    *)
+      echo "Unsupported host OS: $HOST_OS" >&2
+      exit 1
+      ;;
+  esac
+}
+
+current_desktop_arch() {
+  case "$HOST_ARCH" in
+    arm64|aarch64) echo "arm64" ;;
+    x86_64|amd64) echo "x64" ;;
+    *)
+      echo "Unsupported host architecture: $HOST_ARCH" >&2
+      exit 1
+      ;;
+  esac
+}
+
+desktop_rust_target() {
+  local os="$1"
+  local arch="$2"
+
+  case "$os:$arch" in
+    macos:arm64) echo "aarch64-apple-darwin" ;;
+    macos:x64) echo "x86_64-apple-darwin" ;;
+    linux:arm64) echo "aarch64-unknown-linux-gnu" ;;
+    linux:x64) echo "x86_64-unknown-linux-gnu" ;;
+    windows:arm64) echo "aarch64-pc-windows-msvc" ;;
+    windows:x64) echo "x86_64-pc-windows-msvc" ;;
+    *)
+      echo "Unsupported desktop target: $os ($arch)" >&2
+      exit 1
+      ;;
+  esac
+}
+
+desktop_artifact_name() {
+  local os="$1"
+
+  case "$os" in
+    macos) echo "libimage_native.dylib" ;;
+    linux) echo "libimage_native.so" ;;
+    windows) echo "image_native.dll" ;;
+    *)
+      echo "Unsupported desktop OS: $os" >&2
+      exit 1
+      ;;
+  esac
+}
+
+default_target() {
+  case "$(current_desktop_os)" in
+    macos|linux|windows) current_desktop_os ;;
+    *)
+      echo "Unsupported default host target." >&2
+      exit 1
+      ;;
+  esac
+}
+
+TARGET="${1:-$(default_target)}"
 
 build_android() {
   local abi="$1"
@@ -66,6 +134,36 @@ build_ios() {
   cp "$sim_x64_lib" "$out_sim_x64_dir/libimage_native.dylib"
 }
 
+build_desktop() {
+  local os="$1"
+  local expected_os
+  expected_os="$(current_desktop_os)"
+  if [[ "$os" != "$expected_os" ]]; then
+    echo "Cannot build $os prebuilts on $expected_os host." >&2
+    exit 1
+  fi
+
+  local arch
+  arch="$(current_desktop_arch)"
+  local rust_target
+  rust_target="$(desktop_rust_target "$os" "$arch")"
+  local artifact_name
+  artifact_name="$(desktop_artifact_name "$os")"
+  local out_dir="$PREBUILT_DIR/$os/$arch"
+
+  mkdir -p "$out_dir"
+  run_cargo build --release --target "$rust_target"
+  cp "$RUST_DIR/target/$rust_target/release/$artifact_name" "$out_dir/$artifact_name"
+}
+
+case "$TARGET" in
+  all|android|ios|macos|linux|windows) ;;
+  *)
+    echo "Usage: $0 [android|ios|macos|linux|windows|all]" >&2
+    exit 1
+    ;;
+esac
+
 if [[ "$TARGET" == "android" || "$TARGET" == "all" ]]; then
   build_android arm64-v8a
   build_android armeabi-v7a
@@ -74,4 +172,20 @@ fi
 
 if [[ "$TARGET" == "ios" || "$TARGET" == "all" ]]; then
   build_ios
+fi
+
+if [[ "$TARGET" == "macos" ]]; then
+  build_desktop macos
+fi
+
+if [[ "$TARGET" == "linux" ]]; then
+  build_desktop linux
+fi
+
+if [[ "$TARGET" == "windows" ]]; then
+  build_desktop windows
+fi
+
+if [[ "$TARGET" == "all" ]]; then
+  build_desktop "$(current_desktop_os)"
 fi
