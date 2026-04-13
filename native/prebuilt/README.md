@@ -8,6 +8,12 @@ Expected layout:
 - `ios/iphoneos/libimage_native.dylib`
 - `ios/iphonesimulator-arm64/libimage_native.dylib`
 - `ios/iphonesimulator-x86_64/libimage_native.dylib`
+- `macos/arm64/libimage_native.dylib`
+- `macos/x64/libimage_native.dylib`
+- `linux/arm64/libimage_native.so`
+- `linux/x64/libimage_native.so`
+- `windows/arm64/image_native.dll`
+- `windows/x64/image_native.dll`
 
 These artifacts should be produced by CI before publishing so end users can
 consume the package with `pub add image` and do not need a local Rust toolchain.

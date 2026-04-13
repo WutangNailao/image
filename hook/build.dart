@@ -62,13 +62,20 @@ Uri? _prebuiltAssetForTarget(
       architecture: architecture,
       sdkType: iosSdkType,
     ),
+    ('macos', 'arm64') => 'native/prebuilt/macos/arm64/libimage_native.dylib',
+    ('macos', 'x64') => 'native/prebuilt/macos/x64/libimage_native.dylib',
+    ('linux', 'arm64') => 'native/prebuilt/linux/arm64/libimage_native.so',
+    ('linux', 'x64') => 'native/prebuilt/linux/x64/libimage_native.so',
+    ('windows', 'arm64') => 'native/prebuilt/windows/arm64/image_native.dll',
+    ('windows', 'x64') => 'native/prebuilt/windows/x64/image_native.dll',
     _ => null,
   };
   return relativePath == null ? null : packageRoot.resolve(relativePath);
 }
 
 LinkMode _linkModeForTarget(String targetOs) => switch (targetOs) {
-  'android' || 'ios' => DynamicLoadingBundled(),
+  'android' || 'ios' || 'macos' || 'linux' || 'windows' =>
+    DynamicLoadingBundled(),
   _ => throw UnsupportedError('Unsupported native asset target OS: $targetOs'),
 };
 
