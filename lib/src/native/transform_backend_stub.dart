@@ -8,8 +8,7 @@ Image? tryNativeCopyResize(
   required int width,
   required int height,
   required Interpolation interpolation,
-}) =>
-    null;
+}) => null;
 
 Image? tryNativeCopyCrop(
   Image src, {
@@ -17,11 +16,16 @@ Image? tryNativeCopyCrop(
   required int y,
   required int width,
   required int height,
-}) =>
-    null;
+}) => null;
 
-bool tryNativeGaussianBlur(
+bool tryNativeGaussianBlur(Image src, {required int radius}) => false;
+
+bool tryNativeConvolution(
   Image src, {
-  required int radius,
-}) =>
-    false;
+  required List<num> filter,
+  required num div,
+  required num offset,
+  required num amount,
+  Image? mask,
+  int? maskChannel,
+}) => false;

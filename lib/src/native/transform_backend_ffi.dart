@@ -125,10 +125,7 @@ Image? tryNativeCopyCrop(
   }
 }
 
-bool tryNativeGaussianBlur(
-  Image src, {
-  required int radius,
-}) {
+bool tryNativeGaussianBlur(Image src, {required int radius}) {
   if (!nativeImageBackendAvailable ||
       radius <= 0 ||
       src.hasPalette ||
@@ -162,6 +159,105 @@ bool tryNativeGaussianBlur(
     src.toUint8List().setAll(0, blurred.toUint8List());
     return true;
   } finally {
+    malloc.free(input);
+  }
+}
+
+bool tryNativeConvolution(
+  Image src, {
+  required List<num> filter,
+  required num div,
+  required num offset,
+  required num amount,
+  Image? mask,
+  int? maskChannel,
+}) {
+  if (!nativeImageBackendAvailable ||
+      filter.length != 9 ||
+      src.hasPalette ||
+      src.hasAnimation ||
+      div.isNaN ||
+      div.isInfinite ||
+      offset.isNaN ||
+      offset.isInfinite ||
+      amount.isNaN ||
+      amount.isInfinite ||
+      amount < 0 ||
+      amount > 1) {
+    return false;
+  }
+
+  for (final coefficient in filter) {
+    if (coefficient.isNaN || coefficient.isInfinite) {
+      return false;
+    }
+  }
+
+  final prepared = _prepareImage(src);
+  if (prepared == null || !_canWriteBackToSource(src, prepared)) {
+    return false;
+  }
+
+  _PreparedImage? preparedMask;
+  if (mask != null) {
+    if (maskChannel == null) {
+      return false;
+    }
+    if (maskChannel < 0 || maskChannel > 4) {
+      return false;
+    }
+    preparedMask = _prepareImage(mask);
+    if (preparedMask == null ||
+        preparedMask.width < prepared.width ||
+        preparedMask.height < prepared.height) {
+      return false;
+    }
+  }
+
+  final input = malloc<Uint8>(prepared.length);
+  final filterPtr = malloc<Double>(9);
+  final sourceBytes = prepared.toUint8List();
+  Pointer<Uint8>? maskInput;
+  input.asTypedList(sourceBytes.length).setAll(0, sourceBytes);
+  for (var i = 0; i < 9; i++) {
+    filterPtr[i] = filter[i].toDouble();
+  }
+  if (preparedMask != null) {
+    final maskBytes = preparedMask.toUint8List();
+    maskInput = malloc<Uint8>(maskBytes.length);
+    maskInput.asTypedList(maskBytes.length).setAll(0, maskBytes);
+  }
+
+  try {
+    final result = image_convolution_rgba8(
+      input,
+      prepared.width,
+      prepared.height,
+      prepared.numChannels,
+      maskInput ?? nullptr,
+      preparedMask?.width ?? 0,
+      preparedMask?.height ?? 0,
+      preparedMask?.numChannels ?? 0,
+      maskChannel ?? -1,
+      filterPtr,
+      div.toDouble(),
+      offset.toDouble(),
+      amount.toDouble(),
+    );
+    final convolved = _materializeImageResult(result, original: src);
+    if (convolved == null ||
+        convolved.width != src.width ||
+        convolved.height != src.height ||
+        src.lengthInBytes != convolved.lengthInBytes) {
+      return false;
+    }
+    src.toUint8List().setAll(0, convolved.toUint8List());
+    return true;
+  } finally {
+    if (maskInput != null) {
+      malloc.free(maskInput);
+    }
+    malloc.free(filterPtr);
     malloc.free(input);
   }
 }

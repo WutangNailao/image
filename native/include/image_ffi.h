@@ -44,6 +44,20 @@ ImageResult image_gaussian_blur_rgba8(const uint8_t* data,
                                       int32_t channels,
                                       int32_t radius);
 
+ImageResult image_convolution_rgba8(const uint8_t* data,
+                                    int32_t width,
+                                    int32_t height,
+                                    int32_t channels,
+                                    const uint8_t* mask_data,
+                                    int32_t mask_width,
+                                    int32_t mask_height,
+                                    int32_t mask_channels,
+                                    int32_t mask_channel,
+                                    const double* filter,
+                                    double div,
+                                    double offset,
+                                    double amount);
+
 void image_free_buffer(void* release_handle);
 
 const char* image_last_error_message(void);

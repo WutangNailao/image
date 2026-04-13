@@ -61,19 +61,40 @@ Image? tryNativeCopyCrop(
   return image;
 }
 
-bool tryNativeGaussianBlur(
+bool tryNativeGaussianBlur(Image src, {required int radius}) {
+  if (_imageBackendMode == ImageBackendMode.dartOnly) {
+    return false;
+  }
+  final success = backend.tryNativeGaussianBlur(src, radius: radius);
+  if (!success && _imageBackendMode == ImageBackendMode.nativeOnly) {
+    throw UnsupportedError('Native backend could not execute gaussianBlur.');
+  }
+  return success;
+}
+
+bool tryNativeConvolution(
   Image src, {
-  required int radius,
+  required List<num> filter,
+  required num div,
+  required num offset,
+  required num amount,
+  Image? mask,
+  int? maskChannel,
 }) {
   if (_imageBackendMode == ImageBackendMode.dartOnly) {
     return false;
   }
-  final success = backend.tryNativeGaussianBlur(
+  final success = backend.tryNativeConvolution(
     src,
-    radius: radius,
+    filter: filter,
+    div: div,
+    offset: offset,
+    amount: amount,
+    mask: mask,
+    maskChannel: maskChannel,
   );
   if (!success && _imageBackendMode == ImageBackendMode.nativeOnly) {
-    throw UnsupportedError('Native backend could not execute gaussianBlur.');
+    throw UnsupportedError('Native backend could not execute convolution.');
   }
   return success;
 }

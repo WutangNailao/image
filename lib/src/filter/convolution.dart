@@ -2,6 +2,7 @@ import 'dart:math';
 
 import '../color/channel.dart';
 import '../image/image.dart';
+import '../native/transform_backend.dart';
 import '../util/math_util.dart';
 
 /// Apply a 3x3 convolution filter to the [src] image. [filter] should be a
@@ -9,13 +10,27 @@ import '../util/math_util.dart';
 ///
 /// The rgb channels will be divided by [div] and add [offset], allowing
 /// filters to normalize and offset the filtered pixel value.
-Image convolution(Image src,
-    {required List<num> filter,
-    num div = 1.0,
-    num offset = 0.0,
-    num amount = 1,
-    Image? mask,
-    Channel maskChannel = Channel.luminance}) {
+Image convolution(
+  Image src, {
+  required List<num> filter,
+  num div = 1.0,
+  num offset = 0.0,
+  num amount = 1,
+  Image? mask,
+  Channel maskChannel = Channel.luminance,
+}) {
+  if (tryNativeConvolution(
+    src,
+    filter: filter,
+    div: div,
+    offset: offset,
+    amount: amount,
+    mask: mask,
+    maskChannel: maskChannel.index,
+  )) {
+    return src;
+  }
+
   if (src.hasPalette) {
     src = src.convert(numChannels: src.numChannels);
   }

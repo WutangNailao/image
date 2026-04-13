@@ -10,6 +10,7 @@ void main() {
         'image_resize_rgba8',
         'image_crop_rgba8',
         'image_gaussian_blur_rgba8',
+        'image_convolution_rgba8',
         'image_free_buffer',
         'image_last_error_message',
       }),

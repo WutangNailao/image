@@ -68,6 +68,39 @@ external ImageResult image_gaussian_blur_rgba8(
   int radius,
 );
 
+@ffi.Native<
+  ImageResult Function(
+    ffi.Pointer<ffi.Uint8>,
+    ffi.Int32,
+    ffi.Int32,
+    ffi.Int32,
+    ffi.Pointer<ffi.Uint8>,
+    ffi.Int32,
+    ffi.Int32,
+    ffi.Int32,
+    ffi.Int32,
+    ffi.Pointer<ffi.Double>,
+    ffi.Double,
+    ffi.Double,
+    ffi.Double,
+  )
+>()
+external ImageResult image_convolution_rgba8(
+  ffi.Pointer<ffi.Uint8> data,
+  int width,
+  int height,
+  int channels,
+  ffi.Pointer<ffi.Uint8> mask_data,
+  int mask_width,
+  int mask_height,
+  int mask_channels,
+  int mask_channel,
+  ffi.Pointer<ffi.Double> filter,
+  double div,
+  double offset,
+  double amount,
+);
+
 @ffi.Native<ffi.Void Function(ffi.Pointer<ffi.Void>)>()
 external void image_free_buffer(ffi.Pointer<ffi.Void> release_handle);
 
