@@ -101,6 +101,37 @@ pub unsafe extern "C" fn image_convolution_rgba8(
     }
 }
 
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn image_separable_convolution_rgba8(
+    data: *const u8,
+    width: i32,
+    height: i32,
+    channels: i32,
+    mask_data: *const u8,
+    mask_width: i32,
+    mask_height: i32,
+    mask_channels: i32,
+    mask_channel: i32,
+    coefficients: *const f64,
+    coefficient_count: i32,
+) -> ImageResult {
+    unsafe {
+        filter::separable_convolution::image_separable_convolution_rgba8_impl(
+            data,
+            width,
+            height,
+            channels,
+            mask_data,
+            mask_width,
+            mask_height,
+            mask_channels,
+            mask_channel,
+            coefficients,
+            coefficient_count,
+        )
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -199,6 +230,63 @@ mod tests {
                 1.0,
                 0.0,
                 1.0,
+            )
+        };
+        assert_eq!(result.code, core::IMAGE_OK);
+        assert_eq!(result.buffer.width, 4);
+        assert_eq!(result.buffer.height, 4);
+        assert!(!result.buffer.data.is_null());
+        unsafe {
+            image_free_buffer(result.buffer.release_handle);
+        }
+    }
+
+    #[test]
+    fn separable_convolution_returns_pixels() {
+        let input = sample_rgba(4, 4);
+        let coefficients = [0.25, 0.5, 0.25];
+        let result = unsafe {
+            image_separable_convolution_rgba8(
+                input.as_ptr(),
+                4,
+                4,
+                4,
+                std::ptr::null(),
+                0,
+                0,
+                0,
+                -1,
+                coefficients.as_ptr(),
+                coefficients.len() as i32,
+            )
+        };
+        assert_eq!(result.code, core::IMAGE_OK);
+        assert_eq!(result.buffer.width, 4);
+        assert_eq!(result.buffer.height, 4);
+        assert!(!result.buffer.data.is_null());
+        unsafe {
+            image_free_buffer(result.buffer.release_handle);
+        }
+    }
+
+    #[test]
+    fn separable_convolution_with_mask_returns_pixels() {
+        let input = sample_rgba(4, 4);
+        let mask = sample_rgba(4, 4);
+        let coefficients = [0.25, 0.5, 0.25];
+        let result = unsafe {
+            image_separable_convolution_rgba8(
+                input.as_ptr(),
+                4,
+                4,
+                4,
+                mask.as_ptr(),
+                4,
+                4,
+                4,
+                4,
+                coefficients.as_ptr(),
+                coefficients.len() as i32,
             )
         };
         assert_eq!(result.code, core::IMAGE_OK);

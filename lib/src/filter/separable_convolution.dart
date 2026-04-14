@@ -1,15 +1,27 @@
 import '../color/channel.dart';
 import '../image/image.dart';
+import '../native/transform_backend.dart';
 import 'separable_kernel.dart';
 
 /// Apply a generic separable convolution filter the [src] image, using the
 /// given [kernel].
 ///
 /// gaussianBlur is an example of such a filter.
-Image separableConvolution(Image src,
-    {required SeparableKernel kernel,
-    Image? mask,
-    Channel maskChannel = Channel.luminance}) {
+Image separableConvolution(
+  Image src, {
+  required SeparableKernel kernel,
+  Image? mask,
+  Channel maskChannel = Channel.luminance,
+}) {
+  if (tryNativeSeparableConvolution(
+    src,
+    coefficients: kernel.coefficients,
+    mask: mask,
+    maskChannel: maskChannel.index,
+  )) {
+    return src;
+  }
+
   if (src.hasPalette) {
     src = src.convert(numChannels: src.numChannels);
   }

@@ -3,7 +3,7 @@ pub fn luminance_rgb(r: f64, g: f64, b: f64) -> f64 {
 }
 
 pub fn luminance_normalized_rgba(r: u8, g: u8, b: u8) -> f64 {
-    luminance_rgb(r as f64 / 255.0, g as f64 / 255.0, b as f64 / 255.0)
+    luminance_rgb(r as f64, g as f64, b as f64) / 255.0
 }
 
 pub fn normalized_rgba_channel(r: u8, g: u8, b: u8, a: u8, channel: i32) -> Option<f64> {

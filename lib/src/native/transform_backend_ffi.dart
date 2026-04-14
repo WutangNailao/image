@@ -257,7 +257,95 @@ bool tryNativeConvolution(
     if (maskInput != null) {
       malloc.free(maskInput);
     }
-    malloc.free(filterPtr);
+    malloc
+      ..free(filterPtr)
+      ..free(input);
+  }
+}
+
+bool tryNativeSeparableConvolution(
+  Image src, {
+  required List<num> coefficients,
+  Image? mask,
+  int? maskChannel,
+}) {
+  if (!nativeImageBackendAvailable ||
+      coefficients.isEmpty ||
+      coefficients.length.isEven ||
+      src.hasPalette ||
+      src.hasAnimation) {
+    return false;
+  }
+
+  for (final coefficient in coefficients) {
+    if (coefficient.isNaN || coefficient.isInfinite) {
+      return false;
+    }
+  }
+
+  final prepared = _prepareImage(src);
+  if (prepared == null || !_canWriteBackToSource(src, prepared)) {
+    return false;
+  }
+
+  _PreparedImage? preparedMask;
+  if (mask != null) {
+    if (maskChannel == null) {
+      return false;
+    }
+    if (maskChannel < 0 || maskChannel > 4) {
+      return false;
+    }
+    preparedMask = _prepareImage(mask);
+    if (preparedMask == null ||
+        preparedMask.width < prepared.width ||
+        preparedMask.height < prepared.height) {
+      return false;
+    }
+  }
+
+  final input = malloc<Uint8>(prepared.length);
+  final coefficientPtr = malloc<Double>(coefficients.length);
+  final sourceBytes = prepared.toUint8List();
+  Pointer<Uint8>? maskInput;
+  input.asTypedList(sourceBytes.length).setAll(0, sourceBytes);
+  for (var i = 0; i < coefficients.length; i++) {
+    coefficientPtr[i] = coefficients[i].toDouble();
+  }
+  if (preparedMask != null) {
+    final maskBytes = preparedMask.toUint8List();
+    maskInput = malloc<Uint8>(maskBytes.length);
+    maskInput.asTypedList(maskBytes.length).setAll(0, maskBytes);
+  }
+
+  try {
+    final result = image_separable_convolution_rgba8(
+      input,
+      prepared.width,
+      prepared.height,
+      prepared.numChannels,
+      maskInput ?? nullptr,
+      preparedMask?.width ?? 0,
+      preparedMask?.height ?? 0,
+      preparedMask?.numChannels ?? 0,
+      maskChannel ?? -1,
+      coefficientPtr,
+      coefficients.length,
+    );
+    final convolved = _materializeImageResult(result, original: src);
+    if (convolved == null ||
+        convolved.width != src.width ||
+        convolved.height != src.height ||
+        src.lengthInBytes != convolved.lengthInBytes) {
+      return false;
+    }
+    src.toUint8List().setAll(0, convolved.toUint8List());
+    return true;
+  } finally {
+    if (maskInput != null) {
+      malloc.free(maskInput);
+    }
+    malloc.free(coefficientPtr);
     malloc.free(input);
   }
 }

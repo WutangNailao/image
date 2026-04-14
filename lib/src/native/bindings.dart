@@ -101,6 +101,35 @@ external ImageResult image_convolution_rgba8(
   double amount,
 );
 
+@ffi.Native<
+  ImageResult Function(
+    ffi.Pointer<ffi.Uint8>,
+    ffi.Int32,
+    ffi.Int32,
+    ffi.Int32,
+    ffi.Pointer<ffi.Uint8>,
+    ffi.Int32,
+    ffi.Int32,
+    ffi.Int32,
+    ffi.Int32,
+    ffi.Pointer<ffi.Double>,
+    ffi.Int32,
+  )
+>()
+external ImageResult image_separable_convolution_rgba8(
+  ffi.Pointer<ffi.Uint8> data,
+  int width,
+  int height,
+  int channels,
+  ffi.Pointer<ffi.Uint8> mask_data,
+  int mask_width,
+  int mask_height,
+  int mask_channels,
+  int mask_channel,
+  ffi.Pointer<ffi.Double> coefficients,
+  int coefficient_count,
+);
+
 @ffi.Native<ffi.Void Function(ffi.Pointer<ffi.Void>)>()
 external void image_free_buffer(ffi.Pointer<ffi.Void> release_handle);
 

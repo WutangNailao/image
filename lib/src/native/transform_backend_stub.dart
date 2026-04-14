@@ -29,3 +29,10 @@ bool tryNativeConvolution(
   Image? mask,
   int? maskChannel,
 }) => false;
+
+bool tryNativeSeparableConvolution(
+  Image src, {
+  required List<num> coefficients,
+  Image? mask,
+  int? maskChannel,
+}) => false;

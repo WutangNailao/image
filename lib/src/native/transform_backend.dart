@@ -99,6 +99,29 @@ bool tryNativeConvolution(
   return success;
 }
 
+bool tryNativeSeparableConvolution(
+  Image src, {
+  required List<num> coefficients,
+  Image? mask,
+  int? maskChannel,
+}) {
+  if (_imageBackendMode == ImageBackendMode.dartOnly) {
+    return false;
+  }
+  final success = backend.tryNativeSeparableConvolution(
+    src,
+    coefficients: coefficients,
+    mask: mask,
+    maskChannel: maskChannel,
+  );
+  if (!success && _imageBackendMode == ImageBackendMode.nativeOnly) {
+    throw UnsupportedError(
+      'Native backend could not execute separableConvolution.',
+    );
+  }
+  return success;
+}
+
 Image createNativeImageFromRgba({
   required Image template,
   required Uint8List bytes,

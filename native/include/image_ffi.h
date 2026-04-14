@@ -58,6 +58,18 @@ ImageResult image_convolution_rgba8(const uint8_t* data,
                                     double offset,
                                     double amount);
 
+ImageResult image_separable_convolution_rgba8(const uint8_t* data,
+                                              int32_t width,
+                                              int32_t height,
+                                              int32_t channels,
+                                              const uint8_t* mask_data,
+                                              int32_t mask_width,
+                                              int32_t mask_height,
+                                              int32_t mask_channels,
+                                              int32_t mask_channel,
+                                              const double* coefficients,
+                                              int32_t coefficient_count);
+
 void image_free_buffer(void* release_handle);
 
 const char* image_last_error_message(void);
